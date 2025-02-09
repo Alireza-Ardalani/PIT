@@ -2,18 +2,30 @@ plugins {
     id 'java'
 }
 
-group = 'org.example'
+group = 'com.alirezaard.pit'
 version = '1.0-SNAPSHOT'
 
 repositories {
+    google()
     mavenCentral()
 }
 
+// We need this for using Main class capability.
+//TODO-Alireza: Find a better solution if needed.
+compileJava {
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+}
+
 dependencies {
-    testImplementation platform('org.junit:junit-bom:5.9.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation("de.fraunhofer.sit.sse.flowdroid:soot-infoflow:2.13.0")
+    implementation("de.fraunhofer.sit.sse.flowdroid:soot-infoflow-summaries:2.13.0")
+    implementation("de.fraunhofer.sit.sse.flowdroid:soot-infoflow-android:2.13.0")
+
+    implementation 'io.github.skylot:jadx-core:1.4.7'
+    implementation 'io.github.skylot:jadx-dex-input:1.4.7'
+    implementation 'io.github.skylot:jadx-smali-input:1.4.7'
 }
 
 test {
-    useJUnitPlatform()
 }
