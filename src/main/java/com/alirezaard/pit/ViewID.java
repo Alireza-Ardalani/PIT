@@ -21,7 +21,6 @@ public class ViewID {
         innerRun(sourceStmt);
         for (String viewIDNumber : viewIDNumbers){
              viewIDs.add(jadx.findElementID(viewIDNumber));
-             System.out.println("---> " + jadx.findElementID(viewIDNumber));
         }
     }
 
@@ -76,10 +75,6 @@ public class ViewID {
             System.out.println("LOG: Error: startStmt, targetObject, or method is null.");
             return;
         }
-        //System.out.println("---+++--->> " +startStmt);
-        //System.out.println(">> " +method);
-        //System.out.println("LOG: Starting backward tracking for: " + targetObject + " in method: " + method.getSignature());
-
         Body body = method.retrieveActiveBody();
         PatchingChain<Unit> units = body.getUnits();
 
@@ -91,16 +86,12 @@ public class ViewID {
 
         for (Unit unit : reversedUnits) {
             if(targetObject instanceof IntConstant){
-                System.out.println("Hint-->");
                 viewIDNumbers.add(targetObject.toString());
                 break;
             }
             Stmt stmt = (Stmt) unit;
-
-            // System.out.println("-------<<<>>> " + stmt + " - " + stmt.getClass());
             if (stmt == startStmt) {
                 startReached = true;
-                //System.out.println("LOG: Reached the start statement: " + startStmt);
                 continue;
             }
 
@@ -116,10 +107,7 @@ public class ViewID {
 
                     if (rightOp instanceof FieldRef) {
                         SootField field = ((FieldRef) rightOp).getField();
-                        //System.out.println("LOG: Origin found: class field (" + field + ")");
                         if(field.toString().contains("R$id") || field.getType() instanceof IntType){
-                            // System.out.println("*&*&-> " + field.getType());
-
                             viewIDs.add(field.getName());
                         }
                         else {
@@ -133,11 +121,7 @@ public class ViewID {
 
                     if (rightOp instanceof InvokeExpr) {
                         SootMethod invokedMethod = ((InvokeExpr) rightOp).getMethod();
-
-                        //System.out.println("LOG: Origin found: return value of method (" + invokedMethod.getSignature() + ")");
-
                         if (invokedMethod.isConcrete() && invokedMethod.hasActiveBody()) {
-                            //System.out.println("LOG: Recursively tracking return value in method: " + invokedMethod.getSignature());
                             trackReturnValue(invokedMethod);
                         }  else {
                             System.out.println("LOG: Cannot track further; method is not concrete: " + invokedMethod.getSignature());
@@ -148,7 +132,6 @@ public class ViewID {
                     }
 
                     if (rightOp instanceof IdentityRef && rightOp instanceof ParameterRef) {
-                        //System.out.println("LOG: Origin found: method parameter");
                         resolveParameter(method, (ParameterRef) rightOp);
                         originFound = true;
                         break;
@@ -159,10 +142,6 @@ public class ViewID {
                         continue;
                     }
 
-                    System.out.println("Missing Type!!!");
-                    System.out.println(stmt);
-                    System.out.println(rightOp.getType());
-                    System.out.println(rightOp.getClass());
                 }
             }
 
@@ -182,8 +161,6 @@ public class ViewID {
 
                     if (rightOp instanceof ThisRef) {
                         SootClass enclosingClass = method.getDeclaringClass();
-                        System.out.println("LOG: Target object corresponds to 'this' of class: " + enclosingClass);
-
                         for (SootField field : enclosingClass.getFields()) {
                             if (field.getType().equals(targetObject.getType())) {
                                 originFound = true;
@@ -210,29 +187,19 @@ public class ViewID {
                 if(InvokeExpr instanceof JSpecialInvokeExpr){
                     JSpecialInvokeExpr JSpecialInvokeExpr = (JSpecialInvokeExpr) InvokeExpr;
                     if(JSpecialInvokeExpr.getBase().equivTo(targetObject)){
-                        System.out.println("New instantiate");
                         // TODO
                         break;
                     }
                 }
             }
         }
-
-        if (!originFound) {
-            System.out.println("LOG: Could not find a valid origin for targetObject: " + targetObject);
-        }
-
-        System.out.println("------ end of method ------");
     }
 
 
     private  void resolveParameter(SootMethod method, ParameterRef paramRef) {
         int paramIndex = paramRef.getIndex();
-        //System.out.println("LOG: Resolving parameter at index: " + paramIndex);
-
         Collection<Unit> callSites = infoflowCFG.getCallersOf(method);
         if (callSites.isEmpty()) {
-            //System.out.println("LOG: No callers found for method: " + method.getSignature());
             return;
         }
         int i = 0;
@@ -240,26 +207,18 @@ public class ViewID {
             if (!(callSite instanceof Stmt)) {
                 continue;
             }
-
             Stmt stmt = (Stmt) callSite;
             InvokeExpr invokeExpr = stmt.getInvokeExpr();
             if (invokeExpr == null) {
                 continue;
             }
-
             if (paramIndex >= invokeExpr.getArgs().size()) {
-                //System.out.println("LOG: Parameter index out of bounds for invocation at: " + stmt);
                 continue;
             }
 
             Value argument = invokeExpr.getArg(paramIndex);
             SootMethod callerMethod = infoflowCFG.getMethodOf(stmt);
-
-            //System.out.println("LOG: Found invocation in caller method: " + callerMethod.getSignature());
-            //System.out.println("LOG: Passing argument: " + argument + " for tracking.");
-
             i++;
-            System.out.println("Track call Site -> " + i );
             backwardFlowTrack(stmt, argument, callerMethod);
         }
     }
@@ -271,14 +230,10 @@ public class ViewID {
             if (unit instanceof JReturnStmt) {
                 JReturnStmt returnStmt = (JReturnStmt) unit;
                 Value returnValue = returnStmt.getOp();
-                //System.out.println("LOG: Tracking return value: " + returnValue + " in method: " + method.getSignature());
                 backwardFlowTrack(returnStmt, returnValue, method);
             }
         }
     }
-
-
-    /////////
 
     private  void trackFieldDefinition_(SootField field) {
 
@@ -288,7 +243,6 @@ public class ViewID {
             try {
                 method.retrieveActiveBody();
             } catch (Exception exception) {
-                System.out.println("Exception: " + exception);
                 continue;
             }
 
@@ -302,17 +256,14 @@ public class ViewID {
                 List<ValueBox> defs = stmt.getDefBoxes();
                 for (ValueBox def : defs) {
                     if (def.getValue() instanceof FieldRef) {
-                        //System.out.println(def);
                         SootField field1 = ((FieldRef) def.getValue()).getField();
                         if (field1.equals(field)) {
-                            System.out.println("okFound");
-                            //System.out.println(stmt.getClass());
                             if (stmt instanceof JAssignStmt) {
                                 JAssignStmt jStmt = (JAssignStmt) stmt;
                                 Value value = jStmt.getRightOp();
                                 backwardFlowTrack(stmt, value, method);
                             } else {
-                                System.out.println("Something is not ok!");
+                                System.out.println("Something is wrong!");
                             }
                         }
                     }
@@ -320,15 +271,12 @@ public class ViewID {
             }
         }
     }
-
     public Collection<? extends SootField> getSootFields() {
         return sootFields;
     }
-
     public Collection<String> getViewIDNumbers() {
         return viewIDNumbers;
     }
-
     public Collection<String> getViewIDs() {
         return viewIDs;
     }

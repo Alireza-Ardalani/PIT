@@ -3,8 +3,6 @@ package com.alirezaard.pit;
 import jadx.api.JadxArgs;
 import jadx.api.JadxDecompiler;
 import jadx.api.JavaClass;
-import jadx.api.ResourceFile;
-import jadx.core.xmlgen.ResContainer;
 
 import java.io.File;
 import java.util.List;
@@ -20,18 +18,6 @@ public class JADX {
         jadxArgs.setDebugInfo(true);
         jadxArgs.setDeobfuscationOn(true);
         jadx.load();
-    }
-    public String getManifestCode() {
-        String manifestCode = "Empty!";
-        for (ResourceFile resourceFile : jadx.getResources()) {
-            if (resourceFile.getType().toString().equals("MANIFEST")) {
-                ResContainer content = resourceFile.loadContent();
-                String code = content.getText().toString();
-                manifestCode = code;
-                break;
-            }
-        }
-        return manifestCode.trim();
     }
     public String findElementID(String input){
         String output = "";

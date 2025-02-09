@@ -27,7 +27,6 @@ public class View {
         this.stmt = inputStmt;
         this.infoflowCFG = inputInfoflowCFG;
         this.jadx = inputJadx;
-        //this.CallGraph = inputCallGraph;
     }
 
     public void runAnalyze() {
@@ -44,7 +43,6 @@ public class View {
     }
     private  void method(Stmt sourceStmt) {
 
-        // Maybe the Source method be <jd$1: void onClick(android.view.View)>($r3)
         Value defValue = null;
         SootMethod method = infoflowCFG.getMethodOf(sourceStmt);
         if(sourceStmt instanceof JAssignStmt){
@@ -54,7 +52,6 @@ public class View {
                 JVirtualInvokeExpr jVirtualInvokeExpr = (JVirtualInvokeExpr)invokeExpr;
                 defValue = jVirtualInvokeExpr.getBase();
             }
-            //else {System.err.println("Error, Bad Cast Handling: It is not JVirtualInvokeExpr");}
         }
         else if(sourceStmt instanceof JInvokeStmt){
             JInvokeStmt jInvokeStmt = (JInvokeStmt) sourceStmt;
@@ -63,9 +60,7 @@ public class View {
                 JVirtualInvokeExpr jVirtualInvokeExpr = (JVirtualInvokeExpr)invokeExpr;
                 defValue = jVirtualInvokeExpr.getBase();
             }
-            //else {System.err.println("LOG: Error, Bad Cast Handling: It is not JVirtualInvokeExpr");}
         }
-        //else{System.err.println("LOG: Error, Bad Cast Handling: It is not JAssignStmt");}
         backwardFlowTrack(sourceStmt,defValue,method);
     }
 
@@ -78,27 +73,18 @@ public class View {
             findViewByIdStmts.add(startStmt);
             return;
         }
-
-        // System.out.println("---+++--->> " +startStmt);
-        // System.out.println(">> " +method);
-        // System.out.println("LOG: Starting backward tracking for: " + targetObject + " in method: " + method.getSignature());
-
         Body body = method.retrieveActiveBody();
         PatchingChain<Unit> units = body.getUnits();
-
         List<Unit> reversedUnits = new ArrayList<>(units);
         Collections.reverse(reversedUnits);
-
         boolean startReached = false;
         boolean originFound = false;
 
         for (Unit unit : reversedUnits) {
             Stmt stmt = (Stmt) unit;
 
-            // System.out.println("-------<<<>>> " + stmt + " - " + stmt.getClass());
             if (stmt == startStmt) {
                 startReached = true;
-                //System.out.println("LOG: Reached the start statement: " + startStmt);
                 continue;
             }
 
@@ -114,7 +100,6 @@ public class View {
 
                     if (rightOp instanceof FieldRef) {
                         SootField field = ((FieldRef) rightOp).getField();
-                        // System.out.println("LOG: Origin found: class field (" + field + ")");
                         sootFields.add(field);
                         originFound = true;
                         trackFieldDefinition_(field);
@@ -124,30 +109,23 @@ public class View {
                     if (rightOp instanceof InvokeExpr) {
                         SootMethod invokedMethod = ((InvokeExpr) rightOp).getMethod();
 
-                        // System.out.println("LOG: Origin found: return value of method (" + invokedMethod.getSignature() + ")");
                         if(invokedMethod.getSignature().contains("findViewById")){
                             findViewByIdStmts.add(stmt);
-                            //   System.out.println("LOG: Origin found: Good findViewById...: " + stmt);
                             originFound = true;
                             break;
                         }
 
                         if (invokedMethod.isConcrete() && invokedMethod.hasActiveBody()) {
-                            // System.out.println("LOG: Recursively tracking return value in method: " + invokedMethod.getSignature());
                             trackReturnValue(invokedMethod);
                         } else if (invokedMethod.getSignature().contains("findViewById")) {
                             findViewByIdStmts.add(stmt);
-                            // System.out.println("LOG: Why we are hereeeeee?: Good findViewById: " + stmt);
                         } else {
-                            //System.out.println("LOG: Cannot track further; method is not concrete: " + invokedMethod.getSignature());
                         }
-
                         originFound = true;
                         break;
                     }
 
                     if (rightOp instanceof IdentityRef && rightOp instanceof ParameterRef) {
-                        //System.out.println("LOG: Origin found: method parameter");
                         resolveParameter(method, (ParameterRef) rightOp);
                         originFound = true;
                         break;
@@ -168,7 +146,6 @@ public class View {
 
                     if (rightOp instanceof ParameterRef) {
                         int paramIndex = ((ParameterRef) rightOp).getIndex();
-                        //System.out.println("LOG: Origin found: method parameter (param" + paramIndex + ")");
                         resolveParameter(method, (ParameterRef) rightOp);
                         originFound = true;
                         break;
@@ -176,18 +153,15 @@ public class View {
 
                     if (rightOp instanceof ThisRef) {
                         SootClass enclosingClass = method.getDeclaringClass();
-                        // System.out.println("LOG: Target object corresponds to 'this' of class: " + enclosingClass);
 
                         for (SootField field : enclosingClass.getFields()) {
                             if (field.getType().equals(targetObject.getType())) {
-                                //  System.out.println("LOG: Origin found: class field (" + field.getName() + ")");
                                 originFound = true;
                                 break;
                             }
                         }
 
                         if (!originFound) {
-                            //  System.out.println("LOG: No matching field found in class: " + enclosingClass);
                         }
                         break;
                     }
@@ -199,7 +173,6 @@ public class View {
                 if(InvokeExpr instanceof JSpecialInvokeExpr){
                     JSpecialInvokeExpr JSpecialInvokeExpr = (JSpecialInvokeExpr) InvokeExpr;
                     if(JSpecialInvokeExpr.getBase().equivTo(targetObject)){
-                        // System.out.println("New instantiate");
                         String classObject = "empty";
                         if(infoflowCFG.getMethodOf(stmt).getDeclaringClass().toString().equals("dummyMainClass")){
                             String[] split = infoflowCFG.getMethodOf(stmt).getSignature().toString().split(" ");
@@ -208,34 +181,23 @@ public class View {
                         else {
                             classObject = infoflowCFG.getMethodOf(stmt).getDeclaringClass().toString();
                         }
-                        // System.out.println("New instantiate ---> " + classObject);
-                        // TODO
+                        //TODO
                         break;
                     }
                 }
             }
         }
 
-        if (!originFound) {
-            //  System.out.println("LOG: Could not find a valid origin for targetObject: " + targetObject);
-        }
-
-        // System.out.println("------ end of method ------");
     }
 
 
     private  void resolveParameter(SootMethod method, ParameterRef paramRef) {
         int paramIndex = paramRef.getIndex();
-        // System.out.println("LOG: Resolving parameter at index: " + paramIndex);
-
         Collection<Unit> callSites = infoflowCFG.getCallersOf(method);
-
         if (callSites.isEmpty()) {
-            //   System.out.println("LOG: No callers found for method: " + method.getSignature());
             extraCallFinder(method,paramIndex);
             return;
         }
-        int i = 0;
         for (Unit callSite : callSites) {
             if (!(callSite instanceof Stmt)) {
                 continue;
@@ -246,18 +208,10 @@ public class View {
                 continue;
             }
             if (paramIndex >= invokeExpr.getArgs().size()) {
-                //System.out.println("LOG: Parameter index out of bounds for invocation at: " + stmt);
                 continue;
             }
-
             Value argument = invokeExpr.getArg(paramIndex);
             SootMethod callerMethod = infoflowCFG.getMethodOf(stmt);
-
-            //  System.out.println("LOG: Found invocation in caller method: " + callerMethod.getSignature());
-            //  System.out.println("LOG: Passing argument: " + argument + " for tracking.");
-
-            i++;
-            //  System.out.println("Track call Site -> " + i );
             backwardFlowTrack(stmt, argument, callerMethod);
         }
     }
@@ -270,11 +224,6 @@ public class View {
                     innerMethod.retrieveActiveBody();
                 }
                 catch (Exception e){
-                        /*
-                        System.out.println("Some Method Have problem!! " + e);
-                        --->
-                        java.lang.RuntimeException: No method source set for method
-                         */
                     continue;
                 }
                 if(innerMethod.hasActiveBody()){
@@ -288,16 +237,9 @@ public class View {
                                 continue;
                             }
                             if (paramIndex >= invokeExpr.getArgs().size()) {
-                                //System.out.println("LOG: Parameter index out of bounds for invocation at: " + stmt);
                                 continue;
                             }
-
                             Value argument = invokeExpr.getArg(paramIndex);
-
-                            //  System.out.println("LOG: Found invocation in caller method: " + innerMethod.getSignature());
-                            //  System.out.println("LOG: Passing argument: " + argument + " for tracking.");
-
-                            //  System.out.println("Track call Site -> " + "SPECIAL");
                             backwardFlowTrack(stmt, argument, innerMethod);
                         }
                     }
@@ -324,10 +266,8 @@ public class View {
 
         String annotationID = isAnnotationBindView(field);
         if (!annotationID.equals("-1")) {
-            //   System.out.println("Field " + field.getName() + " @BindView annotation-> " + annotationID );
             viewIDNumbers.add(annotationID);
-            //view.setNumberID(isAnnotationBindView(field));
-            return ;  // Stop tracking, since it's handled by annotation binding
+            return ;
         }
 
         SootClass clazz = field.getDeclaringClass();
@@ -361,7 +301,6 @@ public class View {
                                 backwardFlowTrack(stmt,value,method);
                             }
                             else {
-                                //   System.out.println("Something is not ok!");
                             }
                         }
                     }
@@ -372,16 +311,12 @@ public class View {
 
     private  String isAnnotationBindView(SootField field) {
         for (Tag tag : field.getTags()) {
-            // Check if the field has a @BindView annotation
             if (tag instanceof VisibilityAnnotationTag) {
                 VisibilityAnnotationTag annotationTag = (VisibilityAnnotationTag) tag;
-                //System.out.println("Sss=> " +tag.toString());
                 for (AnnotationTag annotation : annotationTag.getAnnotations()) {
                     if (annotation.getType().contains("BindView")) {
                         int index =tag.toString().indexOf("value: ");
                         if(index != -1){
-                            //System.out.println("www=> "+ index);
-                            //   System.out.println("Alireza: BindView" );
                             return tag.toString().substring(index+7).trim();
                         }
                     }

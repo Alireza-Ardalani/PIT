@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
-    public static String inputFolder = "/Users/alirezaardalani/Desktop/FileForTest";
+    public static String inputFolder = "/Users/alirezaardalani/Desktop/T1";
     public static String outputFolder = "/Users/alirezaardalani/Desktop/T2";
     public static String resultFolder = "/Users/alirezaardalani/Desktop/T3";
     public static String Signatures = "/Users/alirezaardalani/Desktop/ViewSink.txt";
