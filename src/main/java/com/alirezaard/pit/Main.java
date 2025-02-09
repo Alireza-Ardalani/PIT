@@ -37,7 +37,7 @@ public class Main {
             processBuilder.redirectErrorStream(true);
             processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             Process process = processBuilder.start();
-            boolean finished = process.waitFor(1050, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(1150, TimeUnit.SECONDS);
             if (!finished) {
                 System.out.println("Analysis took too long, terminating...");
                 process.destroy();  // Graceful termination
@@ -45,7 +45,7 @@ public class Main {
                     process.destroyForcibly(); // Forceful termination if still alive
                 }
 
-               // moveAPK(apkPath,outputFolder);
+                moveAPK(apkPath,outputFolder);
             }
         }
     }

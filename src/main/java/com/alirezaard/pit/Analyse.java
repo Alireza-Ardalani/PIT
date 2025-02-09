@@ -1,6 +1,8 @@
 package com.alirezaard.pit;
 
 import org.xmlpull.v1.XmlPullParserException;
+import soot.SootField;
+import soot.jimple.Stmt;
 import soot.jimple.infoflow.InfoflowConfiguration;
 import soot.jimple.infoflow.android.InfoflowAndroidConfiguration;
 import soot.jimple.infoflow.android.SetupApplication;
@@ -13,15 +15,19 @@ import soot.jimple.infoflow.solver.cfg.InfoflowCFG;
 import soot.options.Options;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static soot.jimple.infoflow.InfoflowConfiguration.AliasingAlgorithm.FlowSensitive;
 import static soot.jimple.infoflow.InfoflowConfiguration.CodeEliminationMode.NoCodeElimination;
 import static soot.jimple.infoflow.InfoflowConfiguration.ImplicitFlowMode.AllImplicitFlows;
 import static soot.jimple.infoflow.InfoflowConfiguration.PathBuildingAlgorithm.ContextInsensitiveSourceFinder;
+import static soot.jimple.infoflow.InfoflowConfiguration.PathBuildingAlgorithm.ContextSensitive;
+import static soot.jimple.infoflow.InfoflowConfiguration.PathReconstructionMode.Precise;
 
 public class Analyse {
     //public static String inputFolder = "/Users/alirezaardalani/Desktop/T1";
@@ -52,14 +58,37 @@ public class Analyse {
             ResultSinkInfo sink = result.getSink();
             View view = new View(source.getStmt(), infoflowCFG, jadx);
             view.runAnalyze();
-            //System.out.println("Method--> " + infoflowCFG.getMethodOf(sourceStmt));
-            //System.out.println("Sources--> " + sourceStmt);
-            System.out.println("SootField--> " + view.sootFields);
-            System.out.println("findView--> " + view.findViewByIdStmts);
-            System.out.println("IDNumber--> " + view.viewIDNumbers);
-            System.out.println("ID--> " + view.viewIDs);
 
-            System.out.println("length---> " + source.getPath().length);
+            Set<SootField> soot_field = view.sootFields;
+            Set<String> viewIDs = view.viewIDs;
+            Stmt[] paths = source.getPath();
+
+            FileWriter FW = new FileWriter(outputFolder+"/"+name+".txt",true);
+            if (!soot_field.isEmpty() ||  !viewIDs.isEmpty()){
+               if (paths.length > 0) {
+                   for(SootField A : soot_field){
+                       FW.write("SootField: " + A + "\n");
+                   }
+                   for(String A : viewIDs){
+                       FW.write("viewIDs: " + A + "\n");
+                   }
+                   for (var path :  paths){
+                       FW.write("path: " + path + "\n");
+                   }
+               }
+               else {
+                   //No-path!
+                   for(SootField A : soot_field){
+                       FW.write("SootField: " + A + "\n");
+                   }
+                   for(String A : viewIDs){
+                       FW.write("viewIDs: " + A + "\n");
+                   }
+               }
+               FW.close();
+            }
+
+            //System.out.println("length---> " +);
         }
 
 
@@ -149,7 +178,7 @@ public class Analyse {
         return filesName;
     }
 
-    public static SetupApplication setupApplication(String apkFile) throws URISyntaxException, IOException {
+    public static SetupApplication setupApplication(String apkFile) {
         SetupApplication setupApplication = new SetupApplication(androidJars, apkFile);
         InfoflowAndroidConfiguration config = setupApplication.getConfig();
 
@@ -164,18 +193,26 @@ public class Analyse {
             }
         };
         setupApplication.setSootConfig(configSoot);
+
         config.setMergeDexFiles(true);
         config.setAliasingAlgorithm(FlowSensitive);
-        config.setCodeEliminationMode(NoCodeElimination);
         config.getSolverConfiguration().setDataFlowSolver(InfoflowConfiguration.DataFlowSolver.ContextFlowSensitive);
+        //config.setCallgraphAlgorithm(InfoflowConfiguration.CallgraphAlgorithm.CHA);
         config.getSolverConfiguration().setSparsePropagationStrategy(InfoflowConfiguration.SparsePropagationStrategy.Precise);
+        config.setDataFlowDirection(InfoflowConfiguration.DataFlowDirection.Backwards);
         config.setImplicitFlowMode(AllImplicitFlows);
-        config.getPathConfiguration().setPathBuildingAlgorithm(ContextInsensitiveSourceFinder);
+        config.getPathConfiguration().setPathReconstructionMode(Precise);
+        config.getPathConfiguration().setPathBuildingAlgorithm(ContextSensitive);
         config.setMemoryThreshold(1.0d);
-        config.setDataFlowTimeout(500);
+        config.setDataFlowTimeout(1000);
+        config.getPathConfiguration().setPathReconstructionTimeout(500);
+        config.getPathConfiguration().setPathReconstructionBatchSize(10);
         config.getPathConfiguration().setMaxPathLength(100);
         config.setLogSourcesAndSinks(true);
-        config.getAccessPathConfiguration().setAccessPathLength(10);
+        config.getAccessPathConfiguration().setAccessPathLength(5);
+        config.getAccessPathConfiguration().setUseRecursiveAccessPaths(false);
+        config.getAccessPathConfiguration().setUseThisChainReduction(false);
+
         return setupApplication;
     }
 }
