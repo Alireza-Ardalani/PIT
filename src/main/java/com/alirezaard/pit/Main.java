@@ -37,7 +37,7 @@ public class Main {
             processBuilder.redirectErrorStream(true);
             processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             Process process = processBuilder.start();
-            boolean finished = process.waitFor(1150, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(2200, TimeUnit.SECONDS);
             if (!finished) {
                 System.out.println("Analysis took too long, terminating...");
                 process.destroy();  // Graceful termination

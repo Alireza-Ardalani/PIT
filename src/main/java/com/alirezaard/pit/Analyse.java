@@ -2,11 +2,16 @@ package com.alirezaard.pit;
 
 import org.xmlpull.v1.XmlPullParserException;
 import soot.SootField;
+import soot.SootMethod;
+import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
 import soot.jimple.infoflow.InfoflowConfiguration;
 import soot.jimple.infoflow.android.InfoflowAndroidConfiguration;
 import soot.jimple.infoflow.android.SetupApplication;
 import soot.jimple.infoflow.config.IInfoflowConfig;
+import soot.jimple.infoflow.methodSummary.data.provider.EagerSummaryProvider;
+import soot.jimple.infoflow.methodSummary.data.provider.LazySummaryProvider;
+import soot.jimple.infoflow.methodSummary.taintWrappers.SummaryTaintWrapper;
 import soot.jimple.infoflow.results.DataFlowResult;
 import soot.jimple.infoflow.results.InfoflowResults;
 import soot.jimple.infoflow.results.ResultSinkInfo;
@@ -14,19 +19,23 @@ import soot.jimple.infoflow.results.ResultSourceInfo;
 import soot.jimple.infoflow.solver.cfg.InfoflowCFG;
 import soot.options.Options;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static soot.jimple.infoflow.InfoflowConfiguration.AliasingAlgorithm.FlowSensitive;
 import static soot.jimple.infoflow.InfoflowConfiguration.CodeEliminationMode.NoCodeElimination;
 import static soot.jimple.infoflow.InfoflowConfiguration.ImplicitFlowMode.AllImplicitFlows;
 import static soot.jimple.infoflow.InfoflowConfiguration.PathBuildingAlgorithm.ContextInsensitiveSourceFinder;
 import static soot.jimple.infoflow.InfoflowConfiguration.PathBuildingAlgorithm.ContextSensitive;
+import static soot.jimple.infoflow.InfoflowConfiguration.PathReconstructionMode.Fast;
 import static soot.jimple.infoflow.InfoflowConfiguration.PathReconstructionMode.Precise;
 
 public class Analyse {
@@ -39,7 +48,7 @@ public class Analyse {
 
     public static InfoflowCFG infoflowCFG;
 
-    public static void main(String[] args) throws XmlPullParserException, IOException, URISyntaxException {
+    public static void main(String[] args) throws Exception {
 
         String outputFolder = args[0];
         String resultFolder = args[1];
@@ -51,47 +60,69 @@ public class Analyse {
         SetupApplication setupApplication = setupApplication(apkPath);
         InfoflowResults results = setupApplication.runInfoflow(Signatures);
         infoflowCFG = new InfoflowCFG();
-        //Set<Stmt> sources = setupApplication.getCollectedSources();
 
-        for (DataFlowResult result :  results.getResultSet()){
-            ResultSourceInfo source = result.getSource();
-            ResultSinkInfo sink = result.getSink();
-            View view = new View(source.getStmt(), infoflowCFG, jadx);
-            view.runAnalyze();
+        List<String> thirdParties = loadDataFromTxt("ThirdParties.txt");
+        System.out.println(thirdParties);
+        try {
+            for (DataFlowResult result :  results.getResultSet()){
+                ResultSourceInfo source = result.getSource();
+                ResultSinkInfo sink = result.getSink();
 
-            Set<SootField> soot_field = view.sootFields;
-            Set<String> viewIDs = view.viewIDs;
-            Stmt[] paths = source.getPath();
+                View view = new View(source.getStmt(), infoflowCFG, jadx);
+                view.runAnalyze();
 
-            FileWriter FW = new FileWriter(outputFolder+"/"+name+".txt",true);
-            if (!soot_field.isEmpty() ||  !viewIDs.isEmpty()){
-               if (paths.length > 0) {
-                   for(SootField A : soot_field){
-                       FW.write("SootField: " + A + "\n");
-                   }
-                   for(String A : viewIDs){
-                       FW.write("viewIDs: " + A + "\n");
-                   }
-                   for (var path :  paths){
-                       FW.write("path: " + path + "\n");
-                   }
-               }
-               else {
-                   //No-path!
-                   for(SootField A : soot_field){
-                       FW.write("SootField: " + A + "\n");
-                   }
-                   for(String A : viewIDs){
-                       FW.write("viewIDs: " + A + "\n");
-                   }
-               }
-               FW.close();
+                Set<SootField> soot_field = view.sootFields;
+                Set<String> viewIDs = view.viewIDs;
+
+                Stmt[] paths = source.getPath();
+                Set<String> parties = new HashSet<>();
+                String thirdPartySituation = "No_Path_Between_Source_And_Sink";
+                if (paths != null) {
+                    for (Stmt path :  paths){
+                        if(path.containsInvokeExpr()){
+                            InvokeExpr invokeExpr  = path.getInvokeExpr();
+                            SootMethod method = invokeExpr.getMethod();
+                            for(String party: thirdParties){
+                                if(method.toString().contains(party)){
+                                    parties.add(party);
+                                }
+                            }
+                        }
+                    }
+                    if(parties.isEmpty()){
+                        thirdPartySituation = "First_Party_Only";
+                    }
+                    else {
+                        thirdPartySituation = "";
+                        for(String p : parties){
+                            thirdPartySituation = thirdPartySituation + p + "," ;
+                        }
+                    }
+                }
+
+                FileWriter FW = new FileWriter(resultFolder+"/"+name+".txt",true);
+                if (!soot_field.isEmpty() ||  !viewIDs.isEmpty()){
+                        for(SootField A : soot_field){
+                            FW.write("SootField: " + A + "\n");
+                        }
+                        for(String A : viewIDs){
+                            FW.write("viewIDs: " + A + "\n");
+                        }
+                        FW.write("Party: " + thirdPartySituation + "\n");
+                    FW.write("- - - - - - - - - - - - - - - - - - - - - - - - - - \n");
+                    FW.close();
+                }
+                else {
+                    //Nothing, Later, I will get a full result report
+                }
             }
 
-            //System.out.println("length---> " +);
         }
-
-
+        catch (RuntimeException e){
+            //moveAPK(apkPath,outputFolder);
+            System.out.println(e);
+        }
+       // moveAPK(apkPath,outputFolder);
     }
 
 
@@ -178,41 +209,90 @@ public class Analyse {
         return filesName;
     }
 
-    public static SetupApplication setupApplication(String apkFile) {
+    public static SetupApplication setupApplication(String apkFile) throws URISyntaxException, IOException {
+//        IInfoflowConfig configSoot = new IInfoflowConfig() {
+//            @Override
+//            public void setSootOptions(Options options, InfoflowConfiguration config) {
+//                Options.v().set_whole_program(true);
+//                Options.v().set_allow_phantom_refs(false);
+//                Options.v().set_no_bodies_for_excluded(true);
+//                Options.v().set_process_multiple_dex(true);
+//                Options.v().set_include_all(true);
+//            }
+//        };
+//        setupApplication.setSootConfig(configSoot);
+
+//        config.setMergeDexFiles(true);
+//        config.setAliasingAlgorithm(FlowSensitive);
+//        config.getSolverConfiguration().setDataFlowSolver(InfoflowConfiguration.DataFlowSolver.ContextFlowSensitive);
+//        //config.setCallgraphAlgorithm(InfoflowConfiguration.CallgraphAlgorithm.CHA);
+//        config.getSolverConfiguration().setSparsePropagationStrategy(InfoflowConfiguration.SparsePropagationStrategy.Precise);
+//        config.setDataFlowDirection(InfoflowConfiguration.DataFlowDirection.Backwards);
+//        config.setImplicitFlowMode(AllImplicitFlows);
+//        config.getPathConfiguration().setPathReconstructionMode(Precise);
+//        config.getPathConfiguration().setPathBuildingAlgorithm(ContextSensitive);
+//        config.setMemoryThreshold(1.0d);
+//        config.setDataFlowTimeout(1750);
+//        config.getPathConfiguration().setPathReconstructionTimeout(750);
+//        config.getPathConfiguration().setPathReconstructionBatchSize(10);
+//        config.getPathConfiguration().setMaxPathLength(100);
+//        config.setLogSourcesAndSinks(true);
+//        config.getAccessPathConfiguration().setAccessPathLength(10);
+////        config.getAccessPathConfiguration().setUseRecursiveAccessPaths(false);
+////        config.getAccessPathConfiguration().setUseThisChainReduction(false);
+//        setupApplication.setTaintWrapper(new SummaryTaintWrapper(new LazySummaryProvider("summariesManual")));
+
         SetupApplication setupApplication = new SetupApplication(androidJars, apkFile);
         InfoflowAndroidConfiguration config = setupApplication.getConfig();
-
-        IInfoflowConfig configSoot = new IInfoflowConfig() {
-            @Override
-            public void setSootOptions(Options options, InfoflowConfiguration config) {
-                Options.v().set_whole_program(true);
-                Options.v().set_allow_phantom_refs(false);
-                Options.v().set_no_bodies_for_excluded(true);
-                Options.v().set_process_multiple_dex(true);
-                Options.v().set_include_all(true);
-            }
-        };
-        setupApplication.setSootConfig(configSoot);
-
         config.setMergeDexFiles(true);
         config.setAliasingAlgorithm(FlowSensitive);
+        config.setCodeEliminationMode(NoCodeElimination);
         config.getSolverConfiguration().setDataFlowSolver(InfoflowConfiguration.DataFlowSolver.ContextFlowSensitive);
-        //config.setCallgraphAlgorithm(InfoflowConfiguration.CallgraphAlgorithm.CHA);
         config.getSolverConfiguration().setSparsePropagationStrategy(InfoflowConfiguration.SparsePropagationStrategy.Precise);
-        config.setDataFlowDirection(InfoflowConfiguration.DataFlowDirection.Backwards);
+        //config.setDataFlowDirection(InfoflowConfiguration.DataFlowDirection.Backwards);
         config.setImplicitFlowMode(AllImplicitFlows);
-        config.getPathConfiguration().setPathReconstructionMode(Precise);
+        config.getPathConfiguration().setPathReconstructionMode(Fast);
         config.getPathConfiguration().setPathBuildingAlgorithm(ContextSensitive);
         config.setMemoryThreshold(1.0d);
-        config.setDataFlowTimeout(1000);
-        config.getPathConfiguration().setPathReconstructionTimeout(500);
-        config.getPathConfiguration().setPathReconstructionBatchSize(10);
+        config.setDataFlowTimeout(1750);
+        config.getPathConfiguration().setPathReconstructionTimeout(1000);
         config.getPathConfiguration().setMaxPathLength(100);
         config.setLogSourcesAndSinks(true);
-        config.getAccessPathConfiguration().setAccessPathLength(5);
-        config.getAccessPathConfiguration().setUseRecursiveAccessPaths(false);
-        config.getAccessPathConfiguration().setUseThisChainReduction(false);
+
+        setupApplication.setTaintWrapper(new SummaryTaintWrapper(new LazySummaryProvider("summariesManual")));
+//        //setupApplication.setTaintWrapper(new SummaryTaintWrapper(new EagerSummaryProvider("summariesManual")));
+//        config.getAccessPathConfiguration().setAccessPathLength(10);
 
         return setupApplication;
+    }
+    private static void moveAPK(String apkPath, String finishFolder) {
+        File sourceFile = new File(apkPath);
+        File destinationDirectory = new File(finishFolder);
+
+        if (!sourceFile.exists() || !destinationDirectory.exists()) {
+            System.err.println("Source file or destination directory does not exist.");
+        }
+        try {
+            Path sourcePath = sourceFile.toPath();
+            Path destinationPath = new File(destinationDirectory, sourceFile.getName()).toPath();
+
+            Files.move(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("File moved successfully!");
+        } catch (IOException e) {
+            System.err.println("Error moving file: " + e.getMessage());
+        }
+    }
+
+    public static List<String> loadDataFromTxt(String where) throws Exception {
+        InputStream inputStream = Analyse.class.getResourceAsStream("/" + where);
+        if (inputStream == null) {
+            throw new IllegalArgumentException("File not found in resources!!!");
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            return reader.lines()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty())
+                    .collect(Collectors.toList());
+        }
     }
 }
