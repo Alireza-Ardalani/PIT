@@ -50,19 +50,20 @@ public class Analyse {
 
     public static void main(String[] args) throws Exception {
 
-        String outputFolder = args[0];
-        String resultFolder = args[1];
-        String Signatures = args[2];
+         outputFolder = args[0];
+         resultFolder = args[1];
+         Signatures = args[2];
         String apkPath = args[3];
         String name = args[4];
-        String androidJars = args[5];
+         androidJars = args[5];
         JADX jadx = new JADX(apkPath);
         SetupApplication setupApplication = setupApplication(apkPath);
-        InfoflowResults results = setupApplication.runInfoflow(Signatures);
+        InfoflowResults results = setupApplication.runInfoflow("src/main/resources/ViewSink1.txt");
         infoflowCFG = new InfoflowCFG();
 
         List<String> thirdParties = loadDataFromTxt("ThirdParties.txt");
-        System.out.println(thirdParties);
+        Set<String> resultForShow = new HashSet<>();
+
         try {
             for (DataFlowResult result :  results.getResultSet()){
                 ResultSourceInfo source = result.getSource();
@@ -83,7 +84,7 @@ public class Analyse {
                             InvokeExpr invokeExpr  = path.getInvokeExpr();
                             SootMethod method = invokeExpr.getMethod();
                             for(String party: thirdParties){
-                                if(method.toString().contains(party)){
+                                if(method.getSignature().contains(party)){
                                     parties.add(party);
                                 }
                             }
@@ -93,12 +94,14 @@ public class Analyse {
                         thirdPartySituation = "First_Party_Only";
                     }
                     else {
-                        thirdPartySituation = "";
+                        thirdPartySituation = "Third_Party:";
                         for(String p : parties){
                             thirdPartySituation = thirdPartySituation + p + "," ;
                         }
                     }
                 }
+
+
 
                 FileWriter FW = new FileWriter(resultFolder+"/"+name+".txt",true);
                 if (!soot_field.isEmpty() ||  !viewIDs.isEmpty()){
@@ -109,6 +112,11 @@ public class Analyse {
                             FW.write("viewIDs: " + A + "\n");
                         }
                         FW.write("Party: " + thirdPartySituation + "\n");
+
+
+
+
+
                     FW.write("- - - - - - - - - - - - - - - - - - - - - - - - - - \n");
                     FW.close();
                 }
@@ -122,7 +130,7 @@ public class Analyse {
             //moveAPK(apkPath,outputFolder);
             System.out.println(e);
         }
-       // moveAPK(apkPath,outputFolder);
+        moveAPK(apkPath,outputFolder);
     }
 
 
@@ -185,10 +193,35 @@ public class Analyse {
             return "Password";
         } else if (input.contains("bmi") & !(input.contains("submit"))) {
             return "BMI";
+        } else if (input.contains("location")) {
+            return "Location";
         } else {
-            return "NOT_CATEGORIZED";
+            return "NoCategory";
         }
         //return input;
+    }
+
+    private String checkerSink(String input){
+        String result = "Unknown";
+        if(input.contains("<okhttp3") || input.contains("<net") || input.contains("<<android.content.ContentResolver") ||
+        input.contains("<net.sqlcipher") || input.contains("<android.net") || input.contains("<com.google.firebase")
+        || input.contains("<org.springframework")){
+            result = "Network";
+        } else if (input.contains("<android.util.Log")){
+            result = "Log";
+        }
+        else if (input.contains("<android.database") || input.contains("<androidx.room.Dao") ||
+                input.contains("<com.google.firebase.database") || input.contains("<io.realm.Realm")){
+            result = "DataBase";
+        } else if (input.contains("<java.io") || input.contains("<java.nio") ) {
+            result = "File";
+        }
+        else if(input.contains("<android.content.Intent")){
+            result = "Intent";
+        } else if (input.contains("<android.telephony")) {
+            result = "SMS";
+        }
+        return result;
     }
 
 
