@@ -27,5 +27,14 @@ dependencies {
     implementation 'io.github.skylot:jadx-smali-input:1.4.7'
 }
 
-test {
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': 'com.alirezaard.pit.Main'
+    }
+    archiveBaseName.set(project.name + '-all')
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+
+    // Handling duplicate entries
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }

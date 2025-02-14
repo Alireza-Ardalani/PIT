@@ -14,37 +14,47 @@ public class Main {
     public static String inputFolder = "/Users/alirezaardalani/Desktop/T1";
     public static String outputFolder = "/Users/alirezaardalani/Desktop/T2";
     public static String resultFolder = "/Users/alirezaardalani/Desktop/T3";
-    public static String Signatures = "/Users/alirezaardalani/Desktop/ViewSink.txt";
-    public static String androidJars = "/Users/alirezaardalani/Library/Android/sdk/platforms";
+    public static String androidJars = "/Users/alirezaardalani/Desktop/platforms";
+    public static String mode = "Light";
+    public static String time = "2000";
 
     public static void main(String[] args) throws IOException, InterruptedException {
-//        inputFolder = args[0];
-//        outputFolder = args[1];
-//        resultFolder = args[2];
-//        IOSignatures = args[3];
-//        jarFile = args[4];
+        inputFolder = args[0];
+        outputFolder = args[1];
+        resultFolder = args[2];
+        mode = args[3];
+        time = args[4];
+        androidJars = args[5];
 
-
+        Long threshold  = Long.parseLong(time) + 300;
+        Long time1  = Long.parseLong(time)/2;
 
         List<String> fileNames = findApkFiles(inputFolder);
         for (String name : fileNames) {
-
-            System.out.println(name);
             String apkPath = inputFolder + "/" + name;
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "java", "-cp", System.getProperty("java.class.path"), "com.alirezaard.pit.Analyse",
-                    outputFolder,resultFolder,Signatures,apkPath,name,androidJars);
+                    outputFolder,resultFolder,mode,time1.toString(),apkPath,name, androidJars);
             processBuilder.redirectErrorStream(true);
             processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             Process process = processBuilder.start();
-            boolean finished = process.waitFor(3000, TimeUnit.SECONDS);
+            boolean finished = process.waitFor(threshold, TimeUnit.SECONDS);
             if (!finished) {
                 System.out.println("Analysis took too long, terminating...");
-                process.destroy();  // Graceful termination
+                process.destroy();
                 if (process.isAlive()) {
-                    process.destroyForcibly(); // Forceful termination if still alive
+                    process.destroyForcibly();
                 }
-
+                File file = new File("PITSignatures.txt");
+                if (file.exists()) {
+                    file.delete();
+                }
+                moveAPK(apkPath,outputFolder);
+            } else {
+                File file = new File("PITSignatures.txt");
+                if (file.exists()) {
+                    file.delete();
+                }
                 moveAPK(apkPath,outputFolder);
             }
         }
