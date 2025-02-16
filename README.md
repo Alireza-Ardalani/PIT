@@ -1,4 +1,3 @@
-```markdown
 **Personal Information Tracker (PIT) - Static Analysis Tool for Android**
 
 **Overview**  
