@@ -60,7 +60,6 @@ public class Analyse {
         } else if (mode.equals("Light")) {
             signatures = loadDataFromTxt("ViewSinkShort.txt");
         }
-
         FileWriter fileWriter = new FileWriter("PITSignatures.txt");
         for(String sig : signatures){
             fileWriter.write(sig+"\n");
