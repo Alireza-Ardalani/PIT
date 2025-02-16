@@ -48,7 +48,7 @@ Party: First_Party_Only
 ```
 2. **`<APKName>_dotCode.txt`** – DOT graph file for visualization ([Graphviz Online](https://dreampuf.github.io/GraphvizOnline)).
    
-***Figures:***
+***Output Figures from Graphviz***
 
 - ![Figure 1](edu.ucsd.myucsdchart.png)  
 
