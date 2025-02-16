@@ -200,8 +200,8 @@ public class Analyse {
             PI.add(splitter[0]);
             destinations.add(splitter[2]);
         }
-        String dotCode = "digraph G {\nnode [fixedsize=true, width=1, height=1];\n" +
-                "graph [penwidth=1, color=black, margin=0.5, nodesep=1.0, ranksep=1.0];\n" +
+        String dotCode = "digraph G {\nnode [fixedsize=true, width=1.2, height=1];\n" +
+                "graph [penwidth=1.2, color=black, margin=0.5, nodesep=1.0, ranksep=1.0];\n" +
                 "subgraph cluster_G {\n" + "label=\"" + name + "\";\n" + "color=black;\nstyle=solid;\npenwidth=1;\nmargin= 5;\n";
 
         for (String pi : PI) {
@@ -226,13 +226,13 @@ public class Analyse {
         input = input.trim().toLowerCase();
         if (input.equals("name") || input.equals("fname") ||
                 ((input.contains("first") || input.contains("given")) & input.contains("name"))) {
-            return "First_Name";
+            return "FirstName";
         } else if ((input.contains("name") & (input.contains("last") || input.contains("family"))) ||
                 input.equals("lname") || input.equals("surname")) {
-            return "Last_Name";
-        } else if (input.contains("email")) {
-            return "Email";
-        } else if (input.contains("phone") || input.contains("mobile")) {
+            return "LastName";
+        } else if (input.contains("user") & input.contains("name")) {
+            return "UserName";
+        }  else if (input.contains("phone") || input.contains("mobile")) {
             return "Phone";
         } else if (input.contains("address") || input.contains("country") ||
                 input.contains("city") || input.contains("state")) {
@@ -242,7 +242,10 @@ public class Analyse {
             return "Phone";
         } else if (input.contains("gender") || input.contains("male") || input.contains("female") || input.contains("sex")) {
             return "Gender";
-        } else if (((input.contains("age")) &
+        } else if (input.contains("email")) {
+            return "Email";
+        }
+        else if (((input.contains("age")) &
                 !(input.contains("image") || input.contains("page") || input.contains("message") || input.contains("language")
                         || input.contains("centage") || input.contains("advantage") || input.contains("stage") || input.contains("average")
                         || input.contains("usage") || input.contains("mileage") || input.contains("agency") || input.contains("package")
@@ -257,27 +260,28 @@ public class Analyse {
                 || input.contains("preganc") || input.contains("period") || input.contains("ovulat") || input.contains("medical") ||
                 input.contains("surger") || input.contains("allerg") ||
                 (input.contains("history") & (input.contains("patient") || input.contains("past")))) {
-            return "Medical_History";
+            return "MedicalHistory";
         } else if (input.contains("medicatio") || input.contains("prescription") || input.contains("dos") || input.contains("tablet")
                 || input.contains("pill")) {
             return "Medication";
         } else if (input.contains("blood")) {
-            return "Blood-Related";
+            return "BloodRelated";
         } else if (input.contains("stress") || input.contains("anxiety") || input.contains("depres") ||
                 input.contains("fear") || input.contains("marri") || input.contains("fell")
                 || input.contains("panic")) {
-            return "Mental_Health";
+            return "MentalHealth";
         } else if (input.contains("smok") || input.contains("alcoho")) {
-            return "Smoke_Alcohol";
+            return "SmokeAlcohol";
         } else if (input.contains("SSN") || (input.contains("social") & input.contains("secu")) || input.contains("codemelli")) {
             return "SSN";
         } else if (input.contains("card") || input.contains("cvv")) {
-            return "Card_Information";
+            return "CardInformation";
         } else if (input.contains("password")) {
             return "Password";
         } else if (input.contains("bmi") & !(input.contains("submit"))) {
             return "BMI";
-        } else if (input.contains("location")) {
+        }
+        else if (input.contains("location")) {
             return "Location";
         } else {
 //            if (input.contains("_")) {
@@ -294,7 +298,7 @@ public class Analyse {
         String result = "Unknown";
         if (input.contains("<okhttp3") || input.contains("<net") || input.contains("<android.content.ContentResolver") ||
                 input.contains("<net.sqlcipher") || input.contains("<android.net") || input.contains("<com.google.firebase")
-                || input.contains("<org.springframework")) {
+                || input.contains("<org.springframework") || input.contains("<java.net") || input.contains("network")) {
             result = "Network";
         } else if (input.contains("<android.util.Log")) {
             result = "Log";
@@ -310,6 +314,8 @@ public class Analyse {
             result = "SMS";
         } else if (input.contains("<android.content.Context") || input.contains("Intent")) {
             result = "Intent";
+        } else if (input.contains("<android.os")) {
+            result = "Bundle";
         }
         return result;
     }

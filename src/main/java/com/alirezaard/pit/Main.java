@@ -19,12 +19,12 @@ public class Main {
     public static String time = "2000";
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        inputFolder = args[0];
-        outputFolder = args[1];
-        resultFolder = args[2];
-        mode = args[3];
-        time = args[4];
-        androidJars = args[5];
+//        inputFolder = args[0];
+//        outputFolder = args[1];
+//        resultFolder = args[2];
+//        mode = args[3];
+//        time = args[4];
+//        androidJars = args[5];
 
         Long threshold  = Long.parseLong(time) + 300;
         Long time1  = Long.parseLong(time)/2;
