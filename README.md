@@ -46,7 +46,13 @@ SootField: <com.abodo.ABODO.FiltersActivity: android.widget.AutoCompleteTextView
 viewIDs: actv_filters_location_input
 Party: First_Party_Only
 ```
-2. **`<APKName>_dotCode.txt`** – DOT graph file for visualization ([Graphviz Online](https://dreampuf.github.io/GraphvizOnline)).  
+2. **`<APKName>_dotCode.txt`** – DOT graph file for visualization ([Graphviz Online](https://dreampuf.github.io/GraphvizOnline)).
+   
+***Figures:***
+
+- ![Figure 1](edu.ucsd.myucsdchart.png)  
+
+- ![Figure 2](com.abodo.ABODO.png)
 
 ---
 
